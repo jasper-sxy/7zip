@@ -195,6 +195,48 @@ bool CParser::ParseString(const UString &s, const CSwitchForm *switchForms, unsi
 }
 
 
+bool CParser::ParseStrings_Rec(const CSwitchForm *switchForms, unsigned numSwitches,
+    const UStringVector &commandStrings, unsigned index)
+{
+  if (index >= commandStrings.Size())
+    return true;
+
+  const UString &s = commandStrings[index];
+  bool result;
+  if (StopSwitchIndex < 0)
+  {
+    if (s.IsEqualTo(kStopSwitchParsing))
+    {
+      StopSwitchIndex = (int)NonSwitchStrings.Size();
+      result = ParseStrings_Rec(switchForms, numSwitches, commandStrings, index + 1);
+    }
+    else if (!s.IsEmpty() && IsItSwitchChar(s[0]))
+    {
+      if (!ParseString(s, switchForms, numSwitches))
+      {
+        ErrorLine = s;
+        return false;
+      }
+      result = ParseStrings_Rec(switchForms, numSwitches, commandStrings, index + 1);
+    }
+    else
+    {
+      NonSwitchStrings.Add(s);
+      result = ParseStrings_Rec(switchForms, numSwitches, commandStrings, index + 1);
+    }
+  }
+  else
+  {
+    NonSwitchStrings.Add(s);
+    result = ParseStrings_Rec(switchForms, numSwitches, commandStrings, index + 1);
+  }
+
+  // Keep work after the recursive call so optimized builds retain the stack frames.
+  volatile bool completed = result;
+  return completed;
+}
+
+
 bool CParser::ParseStrings(const CSwitchForm *switchForms, unsigned numSwitches, const UStringVector &commandStrings)
 {
   StopSwitchIndex = -1;
@@ -204,28 +246,7 @@ bool CParser::ParseStrings(const CSwitchForm *switchForms, unsigned numSwitches,
   delete []_switches;
   _switches = NULL;
   _switches = new CSwitchResult[numSwitches];
-  
-  FOR_VECTOR (i, commandStrings)
-  {
-    const UString &s = commandStrings[i];
-    if (StopSwitchIndex < 0)
-    {
-      if (s.IsEqualTo(kStopSwitchParsing))
-      {
-        StopSwitchIndex = (int)NonSwitchStrings.Size();
-        continue;
-      }
-      if (!s.IsEmpty() && IsItSwitchChar(s[0]))
-      {
-        if (ParseString(s, switchForms, numSwitches))
-          continue;
-        ErrorLine = s;
-        return false;
-      }
-    }
-    NonSwitchStrings.Add(s);
-  }
-  return true;
+  return ParseStrings_Rec(switchForms, numSwitches, commandStrings, 0);
 }
 
 }

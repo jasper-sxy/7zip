@@ -46,6 +46,8 @@ class CParser
   CSwitchResult *_switches;
 
   bool ParseString(const UString &s, const CSwitchForm *switchForms, unsigned numSwitches);
+  bool ParseStrings_Rec(const CSwitchForm *switchForms, unsigned numSwitches,
+      const UStringVector &commandStrings, unsigned index);
 public:
   UStringVector NonSwitchStrings;
   int StopSwitchIndex;  // NonSwitchStrings[StopSwitchIndex+] are after "--"
